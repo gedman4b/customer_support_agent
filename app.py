@@ -56,6 +56,9 @@ KNOWLEDGE_BASE: tuple[QAItem, ...] = (
 )
 
 MATCH_THRESHOLD = 0.40
+ACRONYM_TOKENS = {"eva", "cam", "phil"}
+ACRONYM_BONUS = 0.2
+ACRONYM_BONUS_MIN_OVERLAP = 0.25
 
 
 def normalize(text: str) -> str:
@@ -75,7 +78,14 @@ def similarity_score(a: str, b: str) -> float:
     b_tokens = tokenize(b_norm)
 
     overlap = len(a_tokens & b_tokens) / max(1, len(a_tokens | b_tokens))
-    acronym_bonus = 0.2 if ({"eva", "cam", "phil"} & a_tokens & b_tokens) else 0.0
+    shared_tokens = a_tokens & b_tokens
+    shared_acronym = bool(ACRONYM_TOKENS & shared_tokens)
+    shared_non_acronym = bool(shared_tokens - ACRONYM_TOKENS)
+    acronym_bonus = (
+        ACRONYM_BONUS
+        if shared_acronym and shared_non_acronym and overlap >= ACRONYM_BONUS_MIN_OVERLAP
+        else 0.0
+    )
 
     return (0.35 * sequence) + (0.65 * overlap) + acronym_bonus
 
