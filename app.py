@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 import re
 from typing import Iterable
+from openai import OpenAI
+from dotenv import load_dotenv
 
+load_dotenv(override=True)
 
 
 @dataclass(frozen=True)
@@ -117,11 +120,29 @@ def llm_fallback(user_question: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if api_key:
         try:
-            from openai import OpenAI
-
             client = OpenAI(api_key=api_key)
             completion = client.chat.completions.create(
                 model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a concise, friendly customer support assistant for "
+                            "general questions."
+                        ),
+                    },
+                    {"role": "user", "content": user_question},
+                ],
+                temperature=0.2,
+            )
+            return completion.choices[0].message.content or "I'm here to help."
+        except Exception:
+            pass
+    else:
+        try:
+            client = OpenAI(api_key=api_key, base_url=os.getenv("BASE_URL"))
+            completion = client.chat.completions.create(
+                model=os.getenv("OPENAI_MODEL", "openai/gpt-oss-120b"),
                 messages=[
                     {
                         "role": "system",
